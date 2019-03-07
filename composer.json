@@ -1,0 +1,24 @@
+{
+    "name": "jetcoder/jupload",
+    "authors": [
+        {
+            "name": "Allen",
+            "email": "253754900@qq.com"
+        }
+    ],
+    "require": {},
+
+    "autoload": {
+        "psr-4": {
+            "Jetcoder\\Jupload\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jetcoder\\Jupload\\UploadServiceProvider"
+            ]
+
+        }
+    }
+}
