@@ -233,7 +233,7 @@ Class Upload
 
                 $file_add = DB::table(self::$attachment_table)->where('id','=',$file_insert_id)->first();
 
-                $file_path = $file_add->driver == 'local'?  DIRECTORY_SEPARATOR. $file_add->path: $file_add['path'];
+                $file_path = $file_add->driver == 'local'?  DIRECTORY_SEPARATOR. $file_add->path: $file_add->path;
 
                 switch ($from) {
                     case 'ckeditor':
