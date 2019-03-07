@@ -36,7 +36,7 @@ Class Upload
 
         self::$storeWay  = config('jupload.store_passage','local');
 
-        self::$storePlace = config('jupload.image_local','storage/');
+        self::$storePlace = config('jupload.image_local','');
 
         self::$ImageEXT = config('jupload.image_size_limit',2 * 1024 );
 
@@ -183,11 +183,10 @@ Class Upload
         switch (self::$storeWay)
         {
             case 'local':
-                $local = self::$storePlace.$dir.DIRECTORY_SEPARATOR;
 
-                $info = $file->storePubliclyAs($local,$filename);
+                $info = $file->storePubliclyAs(self::$storePlace,$filename);
 
-                $filePath = $local.$filename;
+                $filePath = self::$storePlace.$filename;
 
                 break;
             case 'qiniu':
