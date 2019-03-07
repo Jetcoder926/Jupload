@@ -6,7 +6,7 @@ namespace Jetcoder\Jupload;
 
 Trait Funtions
 {
-    protected $hash = [];
+    static protected $hash = [];
 
     function parse_attr($value = '') {
         $array = preg_split('/[,;\r\n]+/', trim($value, ",;\r\n"));
@@ -25,10 +25,10 @@ Trait Funtions
     function hash($filename,$type = 'sha1')
     {
         if (!isset($this->hash[$type])) {
-            $this->hash[$type] = hash_file($type, $filename);
+            self::$hash[$type] = hash_file($type, $filename);
         }
 
-        return $this->hash[$type];
+        return self::$hash[$type];
     }
 
     function ck_js($callback = '', $file_path = '', $error_msg = '')
