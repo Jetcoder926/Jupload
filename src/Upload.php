@@ -12,9 +12,9 @@ Class Upload
 {
     use Funtions;
 
-    protected $errMsg = '';
+    public $errMsg = '';
 
-    protected $data = [];
+    public $data = [];
 
     static protected $attachment_table ;
 
