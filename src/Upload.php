@@ -12,8 +12,10 @@ Class Upload
 {
     use Funtions;
 
-    const SUCCESS = 1001;
-    const FAIL    = 1002;
+    protected $errMsg = '';
+
+    protected $data = [];
+
     static protected $attachment_table ;
 
     static protected $storePlace ;
@@ -55,16 +57,18 @@ Class Upload
      * @author Allen
      * @return mixed
      */
-    public function upload(Request $request)
+    public function upload()
     {
         // 临时取消执行时间限制
         set_time_limit(0);
 
-        $dir = $request->input('dir','');
-        $from = $request->input('from','');
-        $module = $request->input('module','admin');
+        $dir = request()->input('dir','');
+        $from = request()->input('from','');
+        $module = request()->input('module','admin');
 
-        if ($dir == '') return self::message('没有指定上传目录',[],self::FAIL);
+        if ($dir == ''){
+            $this->errMsg = '没有指定上传目录';return $this;
+        }
 
         return $this->saveFile($dir, $from, $module);
     }
@@ -111,11 +115,16 @@ Class Upload
 
 
             switch ($from) {
+                case 'wangeditor':
+                    return $file_path;
+                    break;
                 case 'ckeditor':
                     return $this->ck_js($callback, $file_path);
                     break;
                 default:
-                    return self::message('上传成功',["id" => $file_exists->id,"path" => $file_path,"title" => $file_exists->name],self::SUCCESS);
+                    $this->data = ['id'=>$file_exists->id,'title'=>$file_exists->name,'path'=>$file_path];
+
+                    return $this;
             }
         }
 
@@ -123,15 +132,15 @@ Class Upload
         if ($size_limit > 0 && ($file->getSize() > $size_limit)) {
             switch ($from) {
                 case 'wangeditor':
-                    return "error|附件过大";
+                    $this->errMsg ="error|附件过大";
+                    return $this;
                     break;
                 case 'ckeditor':
                     return $this->ck_js($callback, '', '附件过大');
                     break;
                 default:
-
-                    return self::message('附件过大',[],self::FAIL);
-
+                    $this->errMsg = '附件过大';
+                    return $this;
                     break;
             }
         }
@@ -157,13 +166,15 @@ Class Upload
         if ($error_msg != '') {
             switch ($from) {
                 case 'wangeditor':
-                    return "error|{$error_msg}";
+                    $this->errMsg ="error|{$error_msg}";
+                    return $this;
                     break;
                 case 'ckeditor':
                     return $this->ck_js($callback, '', $error_msg);
                     break;
                 default:
-                    return self::message($error_msg ,[],self::FAIL);
+                    $this->errMsg = $error_msg;
+                    return $this;
             }
         }
         $filename = $this->hash($file->getRealPath() ?: $file->getPathname(),'md5').'.' . $file_ext;
@@ -222,39 +233,44 @@ Class Upload
 
                 $file_add = DB::table(self::$attachment_table)->where('id','=',$file_insert_id)->first();
 
-                $file_add->driver == 'local'? $file_path = DIRECTORY_SEPARATOR. $file_add->path: $file_path = $file_add['path'];
+                $file_path = $file_add->driver == 'local'?  DIRECTORY_SEPARATOR. $file_add->path: $file_add['path'];
 
                 switch ($from) {
                     case 'ckeditor':
                         return $this->ck_js($callback, $file_path);
                         break;
                     default:
-                        return self::message('上传成功',["title" => $file_info['name'],'id'=> $file_add['id'],'path'=> $file_path],self::SUCCESS);
+                        $this->data = ['id'=>$file_add->id,'title'=>$file_add->name,'path'=>$file_path];
 
+                        return $this;
                 }
             } else {
                 switch ($from) {
                     case 'wangeditor':
-                        return "error|上传失败";
+                        $this->errMsg ="error|上传失败";
+                        return $this;
                         break;
                     case 'ckeditor':
                         return $this->ck_js($callback, '', '上传失败');
                         break;
                     default:
-                        return self::message('上传失败',[],self::FAIL);
+                        $this->errMsg = '上传失败';
+                        return $this;
 
                 }
             }
         }else{
             switch ($from) {
                 case 'wangeditor':
-                    return "error|".$file->getError();
+                    $this->errMsg = "error|".$file->getError();
+                    return $this;
                     break;
                 case 'ckeditor':
                     return $this->ck_js($callback, '', $file->getError());
                     break;
                 default:
-                    return self::message($file->getError(),[],self::FAIL);
+                    $this->errMsg = $file->getError();
+                    return $this;
             }
         }
     }
