@@ -30,7 +30,7 @@ Class Upload
 
     public function __construct()
     {
-        self::$attachment_table = config('connections.mysql.prefix').'attachment';
+        self::$attachment_table = config('connections.mysql.prefix').'jupload_attachment';
 
         self::$storeWay  = config('jupload.store_passage','local');
 
