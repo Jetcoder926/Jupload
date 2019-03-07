@@ -183,9 +183,11 @@ Class Upload
         switch (self::$storeWay)
         {
             case 'local':
-                $info = $file->storePubliclyAs(self::$storePlace,$filename);
+                $local = self::$storePlace.$dir.DIRECTORY_SEPARATOR;
 
-                $filePath = self::$storePlace.$dir.DIRECTORY_SEPARATOR.$filename;
+                $info = $file->storePubliclyAs($local,$filename);
+
+                $filePath = $local.$filename;
 
                 break;
             case 'qiniu':
