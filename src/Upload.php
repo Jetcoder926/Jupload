@@ -34,7 +34,7 @@ Class Upload
 
         self::$storeWay  = config('jupload.store_passage','local');
 
-        self::$storePlace = config('jupload.image_local',storage_path('images'));
+        self::$storePlace = config('jupload.image_local','storage/');
 
         self::$ImageEXT = config('jupload.image_size_limit',2 * 1024 );
 
@@ -107,15 +107,15 @@ Class Upload
 
         if ($file_exists = DB::table(self::$attachment_table)->where(['md5' => $this->hash($file->getRealPath() ?: $file->getPathname(),'md5')])->first()) {
 
-            $file_path = $file_exists['driver'] == 'local' ?
-                                    storage_path(). $file_exists['path']:$file_exists['path'];
+            $file_path = $file_exists->driver == 'local' ? DIRECTORY_SEPARATOR.$file_exists->path:$file_exists->path;
+
 
             switch ($from) {
                 case 'ckeditor':
                     return $this->ck_js($callback, $file_path);
                     break;
                 default:
-                    return self::message('上传成功',["id" => $file_exists['id'],"url" => $file_path,"title" => $file_exists['name']],self::SUCCESS);
+                    return self::message('上传成功',["id" => $file_exists->id,"path" => $file_path,"title" => $file_exists->name],self::SUCCESS);
             }
         }
 
@@ -174,7 +174,8 @@ Class Upload
             case 'local':
                 $info = $file->storePubliclyAs(self::$storePlace,$filename);
 
-                $filePath = self::$storePlace.DIRECTORY_SEPARATOR.$filename;
+                $filePath = self::$storePlace.$dir.DIRECTORY_SEPARATOR.$filename;
+
                 break;
             case 'qiniu':
 
@@ -217,9 +218,11 @@ Class Upload
             ];
 
             // 写入数据库
-            if ($file_add = DB::table(self::$attachment_table)->insert($file_info)) {
+            if ($file_insert_id = DB::table(self::$attachment_table)->insertGetId($file_info)) {
 
-                $file_add['driver'] == 'local'? $file_path = DIRECTORY_SEPARATOR. $file_add['path']: $file_path = $file_add['path'];
+                $file_add = DB::table(self::$attachment_table)->where('id','=',$file_insert_id)->first();
+
+                $file_add->driver == 'local'? $file_path = DIRECTORY_SEPARATOR. $file_add->path: $file_path = $file_add['path'];
 
                 switch ($from) {
                     case 'ckeditor':
