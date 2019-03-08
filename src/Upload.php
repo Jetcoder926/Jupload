@@ -38,8 +38,8 @@ Class Upload
 
         self::$storePlace = config('jupload.image_local','');
 
-        self::$ImageEXT = config('jupload.image_size_limit',2 * 1024 );
-
+        self::$ImageMaxSize = config('jupload.image_size_limit',2 * 1024 );
+        
         self::$FileMaxSize = config('jupload.file_size_limit',50 * 1024 );
 
         self::$thumbSize = config('jupload.thumb_size_limit','400,300');
