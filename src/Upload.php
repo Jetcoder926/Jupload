@@ -32,14 +32,14 @@ Class Upload
 
     public function __construct()
     {
-        self::$attachment_table = config('connections.mysql.prefix').'jupload_attachment';
+        self::$attachment_table = config('connections.mysql.prefix').'admin_attachment';
 
         self::$storeWay  = config('jupload.store_passage','local');
 
         self::$storePlace = config('jupload.image_local','');
 
         self::$ImageMaxSize = config('jupload.image_size_limit',2 * 1024 );
-        
+
         self::$FileMaxSize = config('jupload.file_size_limit',50 * 1024 );
 
         self::$thumbSize = config('jupload.thumb_size_limit','400,300');
