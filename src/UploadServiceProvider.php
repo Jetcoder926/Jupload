@@ -27,14 +27,15 @@ class UploadServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('jupload.save', function ($app) {
+        $this->app->singleton('jupload', function ($app) {
             return new Upload();
         });
+
     }
 
     public function provides()
     {
-        return ['jupload.save'];
+        return ['jupload'];
     }
 }
 
