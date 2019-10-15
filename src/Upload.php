@@ -2,8 +2,10 @@
 namespace Jetcoder\Jupload;
 
 
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Input;
 use Jetcoder\Jupload\Exceptions\Exception;
 use Jetcoder\Jupload\Exceptions\InvalidParamException;
 use Illuminate\Support\Facades\Storage;
@@ -11,8 +13,6 @@ use Illuminate\Support\Facades\Storage;
 Class Upload
 {
     use Funtions;
-
-    public $errMsg = '';
 
     public $data = [];
 
@@ -49,6 +49,45 @@ Class Upload
         self::$ImageEXT  = config('jupload.image_ext','gif,jpg,jpeg,bmp,png');
     }
 
+    public function get_file_path($id)
+    {
+        $path = $this->getFilePath($id);
+        if (!$path) {
+            return self::$ApiUrl.'static/admin/img/none.png';
+        }
+        return $path;
+    }
+
+    private function getFilePath($id = '', $type = 0)
+    {
+        if (is_array($id)) {
+            $data_list = DB::table(self::$attachment_table)->whereIn('id', $id)->get()->map(function ($val){
+                return (array)$val;
+            });
+            $paths = [];
+            foreach ($data_list as $key => $value) {
+                if ($value['driver'] == 'local' || $value['driver'] == 'public') {
+                    $paths[$key] = ($type == 0 ? self::$ApiUrl.'public/' : '').$value['path'];
+                } else {
+                    $paths[$key] = $value['path'];
+                }
+            }
+            return $paths;
+        } else {
+            $data = DB::table(self::$attachment_table)->whereIn('id', $id)->first()->toArray();
+
+            if ($data) {
+                if ($data['driver'] == 'local' || $value['driver'] == 'public') {
+                    return ($type == 0 ? self::$ApiUrl.'public/' : '').$data['path'];
+                } else {
+                    return $data['path'];
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
     /**
      * 上传附件
      * @param string $dir 保存的目录:images,files,videos,voices
@@ -63,16 +102,16 @@ Class Upload
         set_time_limit(0);
 
         $dir = request()->input('dir','');
-
+        $from = request()->input('file','upload_name');
         $module = request()->input('module','admin');
 
         if(self::$storeWay == 'public' || self::$storeWay == 'local')
         {
             if ($dir == ''){
-                $this->errMsg = '没有指定上传目录';return $this;
+                throw new Exception('没有指定上传目录');
             }
         }
-        return $this->saveFile($dir, \request()->input('upload_name'), $module);
+        return $this->saveFile($dir, $from, $module);
     }
 
     /**
@@ -94,8 +133,18 @@ Class Upload
         $ext_limit = $ext_limit != '' ? $this->parse_attr($ext_limit) : '';
 
 
-        $file = request()->file($from);
+        $file = Input::file($from);
 
+        try{
+
+            $getRealPath = $file->getRealPath() ?: $file->getPathname();
+
+            $file_ext  = $file->extension();
+
+        }catch (\Exception $exception){
+
+            throw new Exception('上传的文件无效');
+        }
         // 判断附件是否已存在
 
         if ($file_exists = DB::table(self::$attachment_table)->where(['md5' => $this->hash($file->getRealPath() ?: $file->getPathname(),'md5')])->first()) {
@@ -110,8 +159,7 @@ Class Upload
 
         // 判断附件大小是否超过限制
         if ($size_limit > 0 && ($file->getSize() > $size_limit)) {
-            $this->errMsg = '附件过大';
-            return $this;
+            throw new InvalidParamException('附件过大');
         }
 
         // 判断附件格式是否符合
@@ -133,8 +181,7 @@ Class Upload
         }
 
         if ($error_msg != '') {
-            $this->errMsg = $error_msg;
-            return $this;
+            throw new InvalidParamException($error_msg);
         }
         $filename = $this->hash($file->getRealPath() ?: $file->getPathname(),'md5').'.' . $file_ext;
 
@@ -161,14 +208,14 @@ Class Upload
 
                 $disk = Storage::disk('qiniu');
 
-                $disk->has($filename) === false && $info = $disk->put($filename, file_get_contents($file->getRealPath()));
+                $disk->exists($filename) === false && $info = $disk->put($filename, file_get_contents($file->getRealPath()));
 
-                $filePath = $disk->getUrl($filename);
+                $filePath = $disk->url($filename);
 
                 break;
             default:
-                $this->errMsg = '不存在的储存方式';
-                return $this;
+                throw new Exception('不存在的储存方式');
+
                 break;
         }
 
@@ -199,8 +246,18 @@ Class Upload
                 'module' =>  $module
             ];
 
+            try{
+                $file_insert_id = DB::transaction(function ()use($file_info){
+
+                    return DB::table(self::$attachment_table)->insertGetId($file_info);
+                });
+
+            }catch (\Exception $exception){
+
+                throw new Exception('上传失败');
+            }
             // 写入数据库
-            if ($file_insert_id = DB::table(self::$attachment_table)->insertGetId($file_info)) {
+            if ($file_insert_id) {
 
                 $file_add = DB::table(self::$attachment_table)->where('id','=',$file_insert_id)->first();
 
@@ -209,13 +266,18 @@ Class Upload
                 $this->data = ['id'=>$file_add->id,'title'=>$file_add->name,'path'=>$file_path];
 
                 return $this;
+
             } else {
-                $this->errMsg = '上传失败';
-                return $this;
+
+                throw new Exception('上传失败');
+
+
             }
+
+
+
         }else{
-            $this->errMsg = $file->getError();
-            return $this;
+            throw new Exception($file->getError());
         }
     }
 
