@@ -34,7 +34,7 @@ Class Upload
     {
         self::$attachment_table = config('connections.mysql.prefix').'admin_attachment';
 
-        self::$storeWay  = config('jupload.store_passage','local');
+        self::$storeWay  = config('jupload.store_passage','public');
 
         self::$storePlace = config('jupload.image_local','');
 
@@ -63,14 +63,16 @@ Class Upload
         set_time_limit(0);
 
         $dir = request()->input('dir','');
-        $from = request()->input('from','');
+
         $module = request()->input('module','admin');
 
-        if ($dir == ''){
-            $this->errMsg = '没有指定上传目录';return $this;
+        if(self::$storeWay == 'public' || self::$storeWay == 'local')
+        {
+            if ($dir == ''){
+                $this->errMsg = '没有指定上传目录';return $this;
+            }
         }
-
-        return $this->saveFile($dir, $from, $module);
+        return $this->saveFile($dir, \request()->input('upload_name'), $module);
     }
 
     /**
@@ -91,21 +93,8 @@ Class Upload
         $ext_limit = $dir == 'images' ? self::$ImageEXT : self::$FileEXT;
         $ext_limit = $ext_limit != '' ? $this->parse_attr($ext_limit) : '';
 
-        // 获取附件数据
-        $callback = '';
-        switch ($from) {
-            case 'editormd':
-                $file_input_name = 'editormd-image-file';
-                break;
-            case 'ckeditor':
-                $file_input_name = 'upload';
-                $callback = request()->get('CKEditorFuncNum');
-                break;
-            default:
-                $file_input_name = $from;
-                break;
-        }
-        $file = request()->file($file_input_name);
+
+        $file = request()->file($from);
 
         // 判断附件是否已存在
 
@@ -113,36 +102,16 @@ Class Upload
 
             $file_path = $file_exists->driver == 'local' ? DIRECTORY_SEPARATOR.$file_exists->path:$file_exists->path;
 
+            $this->data = ['id'=>$file_exists->id,'title'=>$file_exists->name,'path'=>$file_path];
 
-            switch ($from) {
-                case 'wangeditor':
-                    return $file_path;
-                    break;
-                case 'ckeditor':
-                    return $this->ck_js($callback, $file_path);
-                    break;
-                default:
-                    $this->data = ['id'=>$file_exists->id,'title'=>$file_exists->name,'path'=>$file_path];
+            return $this;
 
-                    return $this;
-            }
         }
 
         // 判断附件大小是否超过限制
         if ($size_limit > 0 && ($file->getSize() > $size_limit)) {
-            switch ($from) {
-                case 'wangeditor':
-                    $this->errMsg ="error|附件过大";
-                    return $this;
-                    break;
-                case 'ckeditor':
-                    return $this->ck_js($callback, '', '附件过大');
-                    break;
-                default:
-                    $this->errMsg = '附件过大';
-                    return $this;
-                    break;
-            }
+            $this->errMsg = '附件过大';
+            return $this;
         }
 
         // 判断附件格式是否符合
@@ -164,24 +133,21 @@ Class Upload
         }
 
         if ($error_msg != '') {
-            switch ($from) {
-                case 'wangeditor':
-                    $this->errMsg ="error|{$error_msg}";
-                    return $this;
-                    break;
-                case 'ckeditor':
-                    return $this->ck_js($callback, '', $error_msg);
-                    break;
-                default:
-                    $this->errMsg = $error_msg;
-                    return $this;
-            }
+            $this->errMsg = $error_msg;
+            return $this;
         }
         $filename = $this->hash($file->getRealPath() ?: $file->getPathname(),'md5').'.' . $file_ext;
 
 
         switch (self::$storeWay)
         {
+            case 'public':
+
+                $info = $file->storePubliclyAs(self::$storePlace,$filename);
+
+                $filePath = self::$storePlace.$filename;
+
+                break;
             case 'local':
 
                 $info = $file->storePubliclyAs(self::$storePlace,$filename);
@@ -199,6 +165,10 @@ Class Upload
 
                 $filePath = $disk->getUrl($filename);
 
+                break;
+            default:
+                $this->errMsg = '不存在的储存方式';
+                return $this;
                 break;
         }
 
@@ -236,43 +206,16 @@ Class Upload
 
                 $file_path = $file_add->driver == 'local'?  DIRECTORY_SEPARATOR. $file_add->path: $file_add->path;
 
-                switch ($from) {
-                    case 'ckeditor':
-                        return $this->ck_js($callback, $file_path);
-                        break;
-                    default:
-                        $this->data = ['id'=>$file_add->id,'title'=>$file_add->name,'path'=>$file_path];
+                $this->data = ['id'=>$file_add->id,'title'=>$file_add->name,'path'=>$file_path];
 
-                        return $this;
-                }
+                return $this;
             } else {
-                switch ($from) {
-                    case 'wangeditor':
-                        $this->errMsg ="error|上传失败";
-                        return $this;
-                        break;
-                    case 'ckeditor':
-                        return $this->ck_js($callback, '', '上传失败');
-                        break;
-                    default:
-                        $this->errMsg = '上传失败';
-                        return $this;
-
-                }
+                $this->errMsg = '上传失败';
+                return $this;
             }
         }else{
-            switch ($from) {
-                case 'wangeditor':
-                    $this->errMsg = "error|".$file->getError();
-                    return $this;
-                    break;
-                case 'ckeditor':
-                    return $this->ck_js($callback, '', $file->getError());
-                    break;
-                default:
-                    $this->errMsg = $file->getError();
-                    return $this;
-            }
+            $this->errMsg = $file->getError();
+            return $this;
         }
     }
 

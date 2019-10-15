@@ -31,11 +31,6 @@ Trait Funtions
         return self::$hash[$type];
     }
 
-    function ck_js($callback = '', $file_path = '', $error_msg = '')
-    {
-        return "<script type='text/javascript'>window.parent.CKEDITOR.tools.callFunction($callback, '$file_path' , '$error_msg');</script>";
-    }
-
     static function message(string $msg,array $data,string $state)
     {
         return response()->json(['msg'=>$msg,'data'=>$data,'state'=>$state]);
