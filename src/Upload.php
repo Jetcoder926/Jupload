@@ -131,7 +131,7 @@ Class Upload
         // 附件类型限制
         $ext_limit = $dir == 'images' ? self::$ImageEXT : self::$FileEXT;
         $ext_limit = $ext_limit != '' ? $this->parse_attr($ext_limit) : '';
-
+		$file = current($file);
         try{
 
             $getRealPath = $file->getRealPath() ?: $file->getPathname();
