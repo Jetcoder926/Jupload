@@ -102,7 +102,7 @@ Class Upload
         set_time_limit(0);
 
         $dir = request()->input('dir','');
-        $from = request()->input('file','upload_name');
+        $from = request()->file();
         $module = request()->input('module','admin');
 
         if(self::$storeWay == 'public' || self::$storeWay == 'local')
@@ -122,7 +122,7 @@ Class Upload
      * @author Allen
 
      */
-    private function saveFile($dir = '', $from = '', $module = '')
+    private function saveFile($dir = '', $file = null, $module = '')
     {
 
         // 附件大小限制
@@ -131,9 +131,6 @@ Class Upload
         // 附件类型限制
         $ext_limit = $dir == 'images' ? self::$ImageEXT : self::$FileEXT;
         $ext_limit = $ext_limit != '' ? $this->parse_attr($ext_limit) : '';
-
-
-        $file = Input::file($from);
 
         try{
 
